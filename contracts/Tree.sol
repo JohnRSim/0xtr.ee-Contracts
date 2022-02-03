@@ -17,6 +17,11 @@ contract Tree {
 
   address public treasury;
 
+  event bidPlaced(address nftContract, uint256 tokenId, address bidder, uint256 price);
+  event bidCancelled(address nftContract, uint256 tokenId, address bidder, uint256 price);
+  event bidAccepted(address nftContract, uint256 tokenId, address bidder, uint256 price, address owner);
+  event bidRejected(address nftContract, uint256 tokenId, address bidder, uint256 price);
+
   constructor() {
     treasury = msg.sender;
     // make sure bids[0] is filled for the for loops
@@ -49,6 +54,64 @@ contract Tree {
       }
     }
     return bids[0];
+  }
+
+  function placeBid(address _nftContract, uint256 _tokenId, uint256 _price) public payable {
+    uint256 iBid = _findBid(_nftContract, _tokenId);
+    require(_price > 0,"Price not set");
+    require(msg.value >= _price, "Funds not received");
+    if (iBid == 0) {
+      bids.push(Bid(_nftContract,_tokenId,msg.sender,_price,block.timestamp));
+      emit bidPlaced(_nftContract, _tokenId, msg.sender, _price);
+    } else {
+      if (bids[iBid].price < _price) {
+        address payable bidderWallet = payable(bids[iBid].bidder);
+        bidderWallet.transfer(bids[iBid].price); // secure?
+        bids[iBid] = Bid(_nftContract,_tokenId,msg.sender,_price,block.timestamp);
+      } else {
+        revert("Higher bid already placed");
+      }
+    }
+  }
+
+  function cancelBid(address _nftContract, uint256 _tokenId) public {
+    uint256 iBid = _findBid(_nftContract, _tokenId);
+    require(iBid > 0, "Bid not found");
+    require(bids[iBid].bidder == msg.sender, "Can not cancel this bid from this address");
+    uint256 toPayBack = bids[iBid].price;
+    address payable bidderWallet = payable(bids[iBid].bidder);
+    delete bids[iBid];
+    bidderWallet.transfer(toPayBack);
+    emit bidCancelled(_nftContract, _tokenId, msg.sender, toPayBack);
+  }
+
+  function rejectBid(address _nftContract, uint256 _tokenId) public {
+    uint256 iBid = _findBid(_nftContract, _tokenId);
+    require(iBid > 0, "Bid not found");
+    address owner = IERC721(_nftContract).ownerOf(_tokenId);
+    require(msg.sender == owner, "You do not own this NFT");
+    address bidder = bids[iBid].bidder;
+    uint256 price = bids[iBid].price;
+    delete bids[iBid];
+    emit bidRejected(_nftContract, _tokenId, bidder, price);
+  }
+
+  function acceptBid(address _nftContract, uint256 _tokenId, uint256 _price) public {
+    uint256 iBid = _findBid(_nftContract, _tokenId);
+    require(iBid > 0, "Bid not found");
+    require(_price == bids[iBid].price, "Price accepted does not match bid price");
+    address owner = IERC721(_nftContract).ownerOf(_tokenId);
+    require(msg.sender == owner, "You do not own this NFT");
+    IERC721(_nftContract).transferFrom(owner, bids[iBid].bidder, _tokenId);
+    uint commission = bids[iBid].price / 400;
+    uint256 payment = bids[iBid].price - commission;
+    address payable treasuryWallet = payable(treasury);
+    address payable ownerWallet = payable(owner);
+    address bidder = bids[iBid].bidder;
+    delete bids[iBid];
+    treasuryWallet.transfer(commission);
+    ownerWallet.transfer(payment);
+    emit bidAccepted(_nftContract, _tokenId, bidder, _price, owner);
   }
 
 }
