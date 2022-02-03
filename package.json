@@ -1,0 +1,24 @@
+{
+  "name": "0xtree-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for 0xTree",
+  "main": "tests/test.js",
+  "scripts": {
+    "test": "tests/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JohnRSim/0xtr.ee-Contracts.git"
+  },
+  "keywords": [
+    "Solidity",
+    "Web3",
+    "EthGlobal"
+  ],
+  "author": "James Bachini",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JohnRSim/0xtr.ee-Contracts/issues"
+  },
+  "homepage": "https://github.com/JohnRSim/0xtr.ee-Contracts#readme"
+}
