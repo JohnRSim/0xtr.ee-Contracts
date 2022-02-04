@@ -14,7 +14,6 @@ contract Tree {
   }
 
   Bid[] public bids;
-
   address public treasury;
 
   event bidPlaced(address nftContract, uint256 tokenId, address bidder, uint256 price);
@@ -113,5 +112,4 @@ contract Tree {
     ownerWallet.transfer(payment);
     emit bidAccepted(_nftContract, _tokenId, bidder, _price, owner);
   }
-
 }
