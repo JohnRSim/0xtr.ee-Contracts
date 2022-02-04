@@ -3,6 +3,10 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
+interface ITreeToken {
+  function mint(address _to, uint256 _amount) external;
+}
+
 contract Tree {
 
   struct Bid {
@@ -15,14 +19,16 @@ contract Tree {
 
   Bid[] public bids;
   address public treasury;
+  address public treeToken;
 
   event bidPlaced(address nftContract, uint256 tokenId, address bidder, uint256 price);
   event bidCancelled(address nftContract, uint256 tokenId, address bidder, uint256 price);
   event bidAccepted(address nftContract, uint256 tokenId, address bidder, uint256 price, address owner);
   event bidRejected(address nftContract, uint256 tokenId, address bidder, uint256 price);
 
-  constructor() {
+  constructor(address _treeToken) {
     treasury = msg.sender;
+    treeToken = _treeToken;
     // make sure bids[0] is filled for the for loops
     bids.push(Bid(address(0),0,address(0),0,block.timestamp));
   }
@@ -111,5 +117,13 @@ contract Tree {
     treasuryWallet.transfer(commission);
     ownerWallet.transfer(payment);
     emit bidAccepted(_nftContract, _tokenId, bidder, _price, owner);
+    distributeRewards(owner,bidder,commission);
+  }
+
+  function distributeRewards(address _owner, address _bidder, uint256 _commission) internal {
+    uint256 govTokenDistro = _commission / 2;
+    require(govTokenDistro > 0, "Why is govTokenDistro below zero?");
+    ITreeToken(treeToken).mint( _owner, govTokenDistro);
+    ITreeToken(treeToken).mint( _bidder, govTokenDistro);
   }
 }

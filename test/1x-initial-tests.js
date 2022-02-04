@@ -2,17 +2,29 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("Initial tests for Tree.sol",  () => {
-  let owner,tree,nft,tokenId;
+  let owner,tree,nft,tokenId,treeToken;
 
   before(async () => {
     [owner,user1,user2,user3] = await ethers.getSigners();
     console.log(`Owner: ${owner.address}`);
-    const contractName = 'Tree';
     await hre.run("compile");
-    // Deploy Tree.sol
-    const Tree = await hre.ethers.getContractFactory('Tree');
-    tree = await Tree.deploy();
+
+    // Deploy TreeToken ERC20
+    const treeTokenContract = await hre.ethers.getContractFactory('TreeToken');
+    treeToken = await treeTokenContract.deploy();
+    await treeToken.deployed();
+    console.log(`TreeToken deployed to: ${treeToken.address}`);
+
+    // Deploy Tree Contract
+    const treeContract = await hre.ethers.getContractFactory('Tree');
+    tree = await treeContract.deploy(treeToken.address);
     await tree.deployed();
+    console.log(`Tree contract deployed to: ${tree.address}`);
+
+    // Transfer ownership of TreeToken to Tree Contract
+    await treeToken.transferOwnership(tree.address);
+    console.log(`TreeToken Ownership transferred to: ${tree.address}`);
+
     // Deploy TestNFT.sol
     const TestNFT = await hre.ethers.getContractFactory('TestNFT');
     nft = await TestNFT.deploy();
@@ -86,6 +98,17 @@ describe("Initial tests for Tree.sol",  () => {
     const tx = await tree.getBid(nft.address, tokenId);
     expect(tx.price).to.be.eq('0');
   });
+
+  it("Check governance token is being distributed", async () => {
+    const user1bal = await treeToken.balanceOf(user1.address);
+    const user2bal = await treeToken.balanceOf(user2.address);
+    const user3bal = await treeToken.balanceOf(user3.address);
+    //console.log(`TreeToken Balances: ${user1bal} ${user2bal} ${user3bal}`);
+    expect(user1bal).to.be.gt(0);
+    expect(user2bal).to.be.eq(0);
+    expect(user3bal).to.be.gt(0);
+  });
+
 
   it("Update treasury fund", async () => {
     await tree.connect(owner).updateTreasuryAddress(user1.address);
