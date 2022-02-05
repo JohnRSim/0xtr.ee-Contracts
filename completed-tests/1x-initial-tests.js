@@ -1,5 +1,14 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const uniswapSdk = require("@uniswap/v3-sdk");
+const INonfungiblePositionManager = require("../abis/nfpm.json");
+const wMaticABI = require("../abis/wmatic.json");
+
+const routerAddress = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'; // all nets
+const wMaticAddress = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // testnet
+// const wMaticAddress = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270'; // mainnet
+const nonFungPosMngAddy = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'; // all nets
+
 
 describe("Initial tests for Tree.sol",  () => {
   let owner,tree,nft,tokenId,treeToken;
@@ -17,9 +26,36 @@ describe("Initial tests for Tree.sol",  () => {
 
     // Deploy Tree Contract
     const treeContract = await hre.ethers.getContractFactory('Tree');
-    tree = await treeContract.deploy(treeToken.address);
+    tree = await treeContract.deploy(treeToken.address,routerAddress,wMaticAddress);
     await tree.deployed();
     console.log(`Tree contract deployed to: ${tree.address}`);
+
+    // Setup liquidity pool on Uni V3
+    const wMatic = new ethers.Contract(wMaticAddress, wMaticABI, ethers.provider);
+    const positionManager = new ethers.Contract(nonFungPosMngAddy, INonfungiblePositionManager, ethers.provider);
+    const liquidityAmount = ethers.utils.parseEther('0.001');
+    const sqrtPrice = uniswapSdk.encodeSqrtRatioX96(liquidityAmount,liquidityAmount);
+    await positionManager.connect(owner).createAndInitializePoolIfNecessary(treeToken.address, wMaticAddress, 3000, sqrtPrice.toString());
+    await treeToken.connect(owner).approve(nonFungPosMngAddy, liquidityAmount);
+    await wMatic.connect(owner).deposit({value:liquidityAmount});
+    await wMatic.connect(owner).approve(nonFungPosMngAddy, liquidityAmount);
+    const mintParam = {
+      token0: treeToken.address,
+      token1: wMaticAddress,
+      fee: 3000,
+      tickLower: -887220,
+      tickUpper: 887220,
+      amount0Desired: liquidityAmount,
+      amount1Desired: liquidityAmount,
+      amount0Min: 1,
+      amount1Min: 1,
+      recipient: owner.address,
+      deadline: Math.floor(Date.now() / 1000) + 600
+    }
+    const tx = await positionManager.connect(owner).mint(mintParam);
+    await tx.wait();
+
+    console.log('routerbal: %s',await wMatic.balanceOf('0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'));
 
     // Transfer ownership of TreeToken to Tree Contract
     await treeToken.transferOwnership(tree.address);
@@ -107,16 +143,6 @@ describe("Initial tests for Tree.sol",  () => {
     expect(user1bal).to.be.gt(0);
     expect(user2bal).to.be.eq(0);
     expect(user3bal).to.be.gt(0);
-  });
-
-
-  it("Update treasury fund", async () => {
-    await tree.connect(owner).updateTreasuryAddress(user1.address);
-    const treasury = await tree.treasury();
-    expect(treasury).to.be.eq(user1.address);
-    await tree.connect(user1).updateTreasuryAddress(user2.address);
-    const treasury2 = await tree.treasury();
-    expect(treasury2).to.be.eq(user2.address);
   });
 
 

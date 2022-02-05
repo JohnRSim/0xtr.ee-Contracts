@@ -8,7 +8,12 @@ module.exports = {
   networks: {
     mumbai: {
       url: `https://matic-mumbai.chainstacklabs.com`,
-      accounts: [process.env.TREEPRIVATEKEY],
+      accounts: [process.env.TREEPRIVATEKEY,process.env.USER1PRIVATEKEY,],
+    },
+    hardhat: {
+      forking: {
+        url: `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMYKEY}`,
+      }
     },
   },
   solidity: {
@@ -19,3 +24,6 @@ module.exports = {
     ]
   },
 };
+
+
+

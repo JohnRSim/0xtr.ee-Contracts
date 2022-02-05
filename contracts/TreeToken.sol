@@ -15,7 +15,7 @@ contract TreeToken is ERC20, ERC20Permit, ERC20Votes, Ownable {
     mapping(uint => address) public crossChain;
 
     constructor() ERC20("TreeToken", "TREE") ERC20Permit("TreeToken") {
-      _mint(msg.sender, 100 ether); // need to take this out before mainnet, just for testing
+      _mint(msg.sender, 20000000 ether); // need to mint some to seed liquidity pool
     }
 
     /* 
@@ -49,12 +49,15 @@ contract TreeToken is ERC20, ERC20Permit, ERC20Votes, Ownable {
     }
 
     /*
-      Mint function required for TREE contract to create new tokens
+      Mint & burn functions required for TREE contract to create new tokens & burn buybacks
       owner is a contract not a dev wallet
     */
     function mint(address _to, uint256 _amount) public onlyOwner {
       _mint(_to, _amount);
     }
 
+    function burn(uint256 _amount) public onlyOwner {
+      _burn(msg.sender, _amount);
+    }
 
 }

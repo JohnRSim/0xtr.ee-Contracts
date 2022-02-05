@@ -1,10 +1,22 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
+import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter02.sol';
 
 interface ITreeToken {
   function mint(address _to, uint256 _amount) external;
+  function burn(uint256 _amount) external;
+  function totalSupply() external returns (uint256);
+}
+
+interface IWMatic {
+  function deposit() external payable;
+  function approve(address spender, uint amount) external returns (bool);
+	function transfer(address recipient, uint amount) external returns (bool);
+  function balanceOf(address account) external view returns (uint);
 }
 
 contract Tree {
@@ -18,24 +30,24 @@ contract Tree {
   }
 
   Bid[] public bids;
-  address public treasury;
   address public treeToken;
+  uint256 public treeTokenMaxSupply = 100000000 ether; // 100m Tokens
+  address public uniRouter;
+  address public wMatic;
+  ISwapRouter public immutable swapRouter;
 
   event bidPlaced(address nftContract, uint256 tokenId, address bidder, uint256 price);
   event bidCancelled(address nftContract, uint256 tokenId, address bidder, uint256 price);
   event bidAccepted(address nftContract, uint256 tokenId, address bidder, uint256 price, address owner);
   event bidRejected(address nftContract, uint256 tokenId, address bidder, uint256 price);
 
-  constructor(address _treeToken) {
-    treasury = msg.sender;
+  constructor(address _treeToken, address _uniRouter, address _wMatic) {
     treeToken = _treeToken;
+    uniRouter = _uniRouter;
+    swapRouter = ISwapRouter(uniRouter);
+    wMatic = _wMatic;
     // make sure bids[0] is filled for the for loops
     bids.push(Bid(address(0),0,address(0),0,block.timestamp));
-  }
-
-  function updateTreasuryAddress (address _newTreasury) public {
-    require(msg.sender == treasury, "Update must come from treasury address");
-    treasury = _newTreasury;
   }
 
   function _findBid(address _nftContract, uint256 _tokenId) internal view returns(uint256) {
@@ -110,20 +122,69 @@ contract Tree {
     IERC721(_nftContract).transferFrom(owner, bids[iBid].bidder, _tokenId);
     uint commission = bids[iBid].price / 400;
     uint256 payment = bids[iBid].price - commission;
-    address payable treasuryWallet = payable(treasury);
     address payable ownerWallet = payable(owner);
     address bidder = bids[iBid].bidder;
     delete bids[iBid];
-    treasuryWallet.transfer(commission);
     ownerWallet.transfer(payment);
     emit bidAccepted(_nftContract, _tokenId, bidder, _price, owner);
     distributeRewards(owner,bidder,commission);
+    buyBackAndBurn(commission);
   }
 
   function distributeRewards(address _owner, address _bidder, uint256 _commission) internal {
-    uint256 govTokenDistro = _commission / 2;
-    require(govTokenDistro > 0, "Why is govTokenDistro below zero?");
-    ITreeToken(treeToken).mint( _owner, govTokenDistro);
-    ITreeToken(treeToken).mint( _bidder, govTokenDistro);
+    uint256 treeTokenSupply = ITreeToken(treeToken).totalSupply();
+    if (treeTokenSupply < treeTokenMaxSupply - 1 ether) {
+      uint256 remainingTreeTokens = treeTokenMaxSupply - treeTokenSupply;
+      uint256 diminishingSupplyFactor =  remainingTreeTokens * 100 / treeTokenMaxSupply;
+      uint256 govTokenDistro = _commission * diminishingSupplyFactor ;
+      require(govTokenDistro > 0, "Why is govTokenDistro below zero?");
+      ITreeToken(treeToken).mint( _owner, govTokenDistro);
+      ITreeToken(treeToken).mint( _bidder, govTokenDistro);
+    }
   }
+
+  function buyBackAndBurn(uint256 _commission) internal {
+    require(address(this).balance >= _commission,"Not enough balance to pay commission");
+    IWMatic(wMatic).deposit{ value: _commission }();
+    require(IWMatic(wMatic).balanceOf(address(this)) >= _commission,"Not enough wMatic to pay commission");
+    IWMatic(wMatic).approve(uniRouter, _commission);
+    /*
+    uint256 deadline = block.timestamp + 300;
+    address tokenIn = wMatic;
+    address tokenOut = treeToken;
+    uint24 fee = 3000;
+    address recipient = address(this);
+    uint256 amountIn = _commission;
+    uint256 amountOutMinimum = 0;
+    uint160 sqrtPriceLimitX96 = 0;
+    ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
+      tokenIn,
+      tokenOut,
+      fee,
+      recipient,
+      deadline,
+      amountIn,
+      amountOutMinimum,
+      sqrtPriceLimitX96
+    );
+    //uint256 amountOut = ISwapRouter(uniRouter).exactInputSingle{ value: _commission }(params);
+    uint256 amountOut = swapRouter.exactInputSingle(params);
+    */
+    uint24 fee = 3000;
+    bytes memory path = abi.encodePacked(wMatic, fee, treeToken);
+    address recipient = address(this);
+    uint256 deadline = block.timestamp + 300;
+    uint256 amountIn = _commission;
+    uint256 amountOutMinimum = 0;
+    ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams(
+      path,
+      recipient,
+      deadline,
+      amountIn,
+      amountOutMinimum
+    );
+    uint256 amountOut = swapRouter.exactInput(params);
+    ITreeToken(treeToken).burn(amountOut);
+  }
+
 }
