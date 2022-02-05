@@ -4,7 +4,6 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
-import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter02.sol';
 
 interface ITreeToken {
   function mint(address _to, uint256 _amount) external;
@@ -128,7 +127,7 @@ contract Tree {
     ownerWallet.transfer(payment);
     emit bidAccepted(_nftContract, _tokenId, bidder, _price, owner);
     distributeRewards(owner,bidder,commission);
-    buyBackAndBurn(commission);
+    //buyBackAndBurn(commission);
   }
 
   function distributeRewards(address _owner, address _bidder, uint256 _commission) internal {
@@ -148,7 +147,6 @@ contract Tree {
     IWMatic(wMatic).deposit{ value: _commission }();
     require(IWMatic(wMatic).balanceOf(address(this)) >= _commission,"Not enough wMatic to pay commission");
     IWMatic(wMatic).approve(uniRouter, _commission);
-    /*
     uint256 deadline = block.timestamp + 300;
     address tokenIn = wMatic;
     address tokenOut = treeToken;
@@ -169,21 +167,6 @@ contract Tree {
     );
     //uint256 amountOut = ISwapRouter(uniRouter).exactInputSingle{ value: _commission }(params);
     uint256 amountOut = swapRouter.exactInputSingle(params);
-    */
-    uint24 fee = 3000;
-    bytes memory path = abi.encodePacked(wMatic, fee, treeToken);
-    address recipient = address(this);
-    uint256 deadline = block.timestamp + 300;
-    uint256 amountIn = _commission;
-    uint256 amountOutMinimum = 0;
-    ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams(
-      path,
-      recipient,
-      deadline,
-      amountIn,
-      amountOutMinimum
-    );
-    uint256 amountOut = swapRouter.exactInput(params);
     ITreeToken(treeToken).burn(amountOut);
   }
 

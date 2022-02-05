@@ -1,8 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const treeAddress = '0x8ae971D2D8a33BF1BC86E5A01651a85A8EAc3112';
-const treeTokenAddress = '';
+const treeAddress = '0xdb4911f8eC72f4E8B213e52bB932adE330Eb7EBb';
+const treeTokenAddress = '0x2a22886bFF44358Cbdd719eD40A3641E600138A6';
 
 describe("Testnet tests for Tree.sol",  () => {
   let owner,user1,tree,nft,tokenId,treeToken;
@@ -46,7 +46,7 @@ describe("Testnet tests for Tree.sol",  () => {
     const balance2 = await ethers.provider.getBalance(owner.address);
     expect(balance2).to.be.lt(balance1);
     const newOwner = await nft.ownerOf(tokenId);
-    expect(newOwner).to.be.eq(owner.address);    
+    expect(newOwner).to.be.eq(user1.address);    
   });
 
 });
