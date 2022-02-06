@@ -9,7 +9,7 @@ interface IERC20 {
 
 contract SwapExample {
     // Mumbai Testnet
-    address public constant ROUTER = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
+    address public constant ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address public constant DAI = 0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F;
     address public constant WMATIC = 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
 
