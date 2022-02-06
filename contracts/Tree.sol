@@ -35,7 +35,6 @@ contract Tree is ERC1155Holder {
   uint256 public treeTokenMaxSupply = 100000000 ether; // 100m Tokens
   address public uniRouter;
   address public wMatic;
-  ISwapRouter public immutable swapRouter;
 
   event bidPlaced(address nftContract, uint256 tokenId, address bidder, uint256 price);
   event bidCancelled(address nftContract, uint256 tokenId, address bidder, uint256 price);
@@ -45,7 +44,6 @@ contract Tree is ERC1155Holder {
   constructor(address _treeToken, address _uniRouter, address _wMatic) {
     treeToken = _treeToken;
     uniRouter = _uniRouter;
-    swapRouter = ISwapRouter(uniRouter);
     wMatic = _wMatic;
     // make sure bids[0] is filled for the for loops
     bids.push(Bid(address(0),0,address(0),0,block.timestamp));
@@ -156,7 +154,7 @@ contract Tree is ERC1155Holder {
     ownerWallet.transfer(payment);
     emit bidAccepted(_nftContract, _tokenId, bidder, _price, msg.sender);
     distributeRewards(msg.sender,bidder,commission);
-    //buyBackAndBurn(commission);
+    buyBackAndBurn(commission);
   }
 
   function distributeRewards(address _owner, address _bidder, uint256 _commission) internal {
@@ -176,27 +174,20 @@ contract Tree is ERC1155Holder {
     IWMatic(wMatic).deposit{ value: _commission }();
     require(IWMatic(wMatic).balanceOf(address(this)) >= _commission,"Not enough wMatic to pay commission");
     IWMatic(wMatic).approve(uniRouter, _commission);
-    uint256 deadline = block.timestamp + 300;
-    address tokenIn = wMatic;
-    address tokenOut = treeToken;
-    uint24 fee = 3000;
-    address recipient = address(this);
-    uint256 amountIn = _commission;
-    uint256 amountOutMinimum = 0;
-    uint160 sqrtPriceLimitX96 = 0;
-    ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
-      tokenIn,
-      tokenOut,
-      fee,
-      recipient,
-      deadline,
-      amountIn,
-      amountOutMinimum,
-      sqrtPriceLimitX96
-    );
+    ISwapRouter.ExactInputSingleParams memory params =
+        ISwapRouter.ExactInputSingleParams({
+          tokenIn: wMatic,
+          tokenOut: treeToken,
+          fee: 3000,
+          recipient: address(this),
+          deadline: block.timestamp + 300,
+          amountIn: _commission,
+          amountOutMinimum: 0,
+          sqrtPriceLimitX96: 0
+        });
     //uint256 amountOut = ISwapRouter(uniRouter).exactInputSingle{ value: _commission }(params);
-    uint256 amountOut = swapRouter.exactInputSingle(params);
+    uint256 amountOut = ISwapRouter(uniRouter).exactInputSingle(params);
     ITreeToken(treeToken).burn(amountOut);
   }
-
+  receive () external payable {}
 }

@@ -4,7 +4,7 @@ const uniswapSdk = require("@uniswap/v3-sdk");
 const INonfungiblePositionManager = require("../abis/nfpm.json");
 const wMaticABI = require("../abis/wmatic.json");
 
-const routerAddress = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'; // all nets
+const routerAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // all nets
 const wMaticAddress = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // testnet
 // const wMaticAddress = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270'; // mainnet
 const nonFungPosMngAddy = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'; // all nets

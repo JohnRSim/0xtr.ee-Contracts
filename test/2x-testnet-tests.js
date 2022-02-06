@@ -1,8 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const treeContractAddress = '0x87AA74bC1E6846818304480b7f4Fc5ce4e74e266';
-const treeTokenAddress = '0x1F694658898D62b33b7a123E1A519b7A21f44E85';
+const treeContractAddress = '0xEc75FbD67232aaD0315D6c51790ff10776f6B74F';
+const treeTokenAddress = '0x055312595daEB1004c6590bD8285Ff15bbC6F283';
 
 describe("Testnet tests for Tree.sol",  () => {
   let owner,user1,tree,nft,nft1155,tokenId,treeToken;
