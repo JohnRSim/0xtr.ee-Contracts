@@ -1,8 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const treeAddress = '0xdb4911f8eC72f4E8B213e52bB932adE330Eb7EBb';
-const treeTokenAddress = '0x2a22886bFF44358Cbdd719eD40A3641E600138A6';
+const treeContractAddress = '0x87AA74bC1E6846818304480b7f4Fc5ce4e74e266';
+const treeTokenAddress = '0x1F694658898D62b33b7a123E1A519b7A21f44E85';
 
 describe("Testnet tests for Tree.sol",  () => {
   let owner,user1,tree,nft,nft1155,tokenId,treeToken;
@@ -12,7 +12,7 @@ describe("Testnet tests for Tree.sol",  () => {
     console.log(`Owner: ${owner.address}`);
     await hre.run("compile");
     const treeContract = await hre.ethers.getContractFactory('Tree');
-    tree = await treeContract.attach(treeAddress);
+    tree = await treeContract.attach(treeContractAddress);
 
     // Deploy TestNFT.sol
     const TestNFT = await hre.ethers.getContractFactory('TestNFT');
@@ -74,23 +74,16 @@ describe("Testnet tests for Tree.sol",  () => {
     const balance1 = await ethers.provider.getBalance(owner.address);
     const tx = await nft1155.connect(owner).setApprovalForAll(user1.address, true);
     await tx.wait();
-    const tx4 = await nft1155.connect(owner).setApprovalForAll(tree.address, true);
-    await tx4.wait();
-    console.log('TestB');
-  /*
+    const tx2 = await nft1155.connect(owner).setApprovalForAll(tree.address, true);
+    await tx2.wait();
+    console.log('TestB',nft1155.address);
     const approved = await nft1155.connect(owner).isApprovedForAll(owner.address, user1.address);
     expect(approved).to.be.eq(true);
-
-    const tx3 = await tree.getBid(nft1155.address, tokenId);
-    console.log('user1',user1.address);
-    console.log(tx3);
-
-    const tx2 = await tree.connect(owner).acceptBid(nft1155.address, tokenId, bidPrice,{ gasLimit: 5000000 });
-    await tx2.wait();
+    const tx3 = await tree.connect(owner).acceptBid(nft1155.address, tokenId, bidPrice,{ gasLimit: 5000000 });
+    await tx3.wait();
     console.log('TestC');
-    //const balance = await nft1155.balanceOf(user1.address,tokenId);
-    //expect(balance).to.be.eq('1');
-*/
+    const balance = await nft1155.balanceOf(user1.address,tokenId);
+    expect(balance).to.be.eq('1');
   });
 
 });
